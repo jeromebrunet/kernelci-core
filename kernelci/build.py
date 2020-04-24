@@ -724,6 +724,19 @@ def install_kernel(kdir, tree_name, tree_url, git_branch, git_commit=None,
     with open(os.path.join(output_path, 'bmeta.json')) as json_file:
         bmeta = json.load(json_file)
 
+    arch = bmeta['arch']
+    build_env = bmeta['build_environment']
+    defconfig_full = bmeta['defconfig_full']
+    defconfig_dir = defconfig_full.replace('/', '-')
+    if not publish_path:
+        publish_path = '/'.join([
+            tree_name, git_branch, describe, arch, defconfig_dir, build_env,
+        ])
+
+    # make my life easier with rsync
+    install_path = os.path.join(install_path, publish_path)
+    os.makedirs(install_path)
+
     system_map = os.path.join(output_path, 'System.map')
     if os.path.exists(system_map):
         virt_text = shell_cmd('grep " _text" {}'.format(system_map)).split()[0]
@@ -743,7 +756,6 @@ def install_kernel(kdir, tree_name, tree_url, git_branch, git_commit=None,
     if os.path.exists(frags):
         shutil.copy(frags, install_path)
 
-    arch = bmeta['arch']
     boot_dir = os.path.join(output_path, 'arch', arch, 'boot')
     kimage_names = KERNEL_IMAGE_NAMES[arch]
     kimages = []
@@ -784,14 +796,6 @@ def install_kernel(kdir, tree_name, tree_url, git_branch, git_commit=None,
         modules_tarball_path = os.path.join(install_path, modules_tarball)
         shell_cmd("tar -C{path} -cJf {tarball} .".format(
             path=mod_path, tarball=modules_tarball_path))
-
-    build_env = bmeta['build_environment']
-    defconfig_full = bmeta['defconfig_full']
-    defconfig_dir = defconfig_full.replace('/', '-')
-    if not publish_path:
-        publish_path = '/'.join([
-            tree_name, git_branch, describe, arch, defconfig_dir, build_env,
-        ])
 
     bmeta.update({
         'kconfig_fragments': 'frag.config' if os.path.exists(frags) else '',
